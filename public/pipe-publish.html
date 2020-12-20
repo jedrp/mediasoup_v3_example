@@ -23,6 +23,21 @@
 
 <body>
   mediasoup v3 publish with socket.io<br />
+  <input type="text" id="video_producer_id">
+  <br>
+  <br>
+  <input type="text" id="audio_producer_id">
+  <br>
+  <br>
+  <p>pipe consumer port</p> <input type="text" id="pipe_consumer_port">
+  <br>
+  <br>
+  <p>producer video info</p>
+  <textarea id="producer_video_info"></textarea>
+  <p>producer audio info</p>
+  <textarea id="producer_audio_info"></textarea>
+  <br>
+  <br>
   <input type="checkbox" id="use_video" checked="1">video</input>
   <input type="checkbox" id="use_audio" checked="1">audio</input>
   <button id="start_video_button" onclick="startMedia();">Start Media</button>
@@ -209,7 +224,7 @@
         return;
       });
 
-      console.log("--- get capabilities --");
+      // --- get capabilities --
       const data = await sendRequest('getRouterRtpCapabilities', {});
       console.log('getRouterRtpCapabilities:', data);
       await loadDevice(data);
@@ -219,9 +234,12 @@
 
     // --- get transport info ---
     console.log('--- createProducerTransport --');
-    const params = await sendRequest('createProducerTransport', {});
+    let consumerPortStr = document.getElementById("pipe_consumer_port").value;
+    let consumerPort = parseInt(consumerPortStr);
+    const params = await sendRequest('createProducerTransport', {consumerPort: consumerPort});
     console.log('transport params:', params);
     producerTransport = device.createSendTransport(params);
+   
     console.log('createSendTransport:', producerTransport);
 
     // --- join & start publish --
@@ -233,13 +251,27 @@
     });
 
     producerTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
-      console.log('--trasnport produce');
+      console.log('--trasnport produce ----- kind', kind);
+
       try {
-        const { id } = await sendRequest('produce', {
+
+        console.log("----------consumer port", consumerPort);
+        const data = await sendRequest('produce', {
           transportId: producerTransport.id,
           kind,
           rtpParameters,
+          consumerPort,
         });
+        console.log(data);
+        if (kind === "video") {
+          document.getElementById('video_producer_id').value = data.id;
+          document.getElementById("producer_video_info").value = JSON.stringify(data);
+        }
+        if (kind === "audio") {
+          document.getElementById('audio_producer_id').value = data.id;
+          document.getElementById("producer_audio_info").value = JSON.stringify(data);
+        }
+        let id = data.id;
         callback({ id });
       } catch (err) {
         errback(err);
@@ -313,9 +345,7 @@
     try {
       device = new MediasoupClient.Device();
     } catch (error) {
-      if (error.name === 'UnsupportedError') {
-        console.error('browser not supported');
-      }
+      console.error(error);
     }
     await device.load({ routerRtpCapabilities });
   }

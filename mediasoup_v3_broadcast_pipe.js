@@ -463,12 +463,12 @@ async function startWorker() {
       {
         listenIp: "127.0.0.1"
       });
-
+    console.log("pipe transports", pipeTransport1.tuple, pipeTransport2.tuple)
     await Promise.all(
       [
         pipeTransport1.connect(
           {
-            ip: pipeTransport2.tuple.localIp,
+            ip: pipeTransport1.tuple.localIp,
             port: pipeTransport2.tuple.localPort
           }),
         pipeTransport2.connect(
